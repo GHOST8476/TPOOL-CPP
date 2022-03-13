@@ -1,4 +1,4 @@
-# tutil
+# TUTIL-CPP
 A C++ library with basic thread utils - ThreadPool, WorkerThread, SafeThread.
 
 Use GitWiki to know more.
