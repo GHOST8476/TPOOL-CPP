@@ -1,12 +1,13 @@
 #pragma once
 #include "tutil/details/base_tpool.hpp"
+#include <array>
 
 TUTIL_NAMESPACE_BEGIN_MAIN
 
 /// stack based thread pool - non-resizable
 /// tasks are evaluated based on their priority
 template <size_t Size, template <typename> typename TaskQueue = details::deque>
-class ftpool : private base_tpool<details::array<Size>::type, TaskQueue>
+class fixed : private base_tpool<details::array<Size>::type, TaskQueue>
 {
     using base_t = base_tpool<details::array<Size>::type, TaskQueue>;
 
@@ -18,15 +19,15 @@ public:
     using err_handler_t = typename base_t::err_handler_t;
 
 public:
-    ftpool()
+    fixed()
     {
         for (auto &thread : threads_)
         {
-            thread = std::thread{&ftpool::tinit_, this};
+            thread = std::thread{&fixed::tinit_, this};
         }
     }
 
-    virtual ~ftpool()
+    virtual ~fixed()
     {
         {
             std::lock_guard<mutex_t> lock(task_mutex_);
@@ -107,13 +108,13 @@ public:
     using base_t::wait_until;
 };
 
-/// movable version of ftpool
+/// movable version of fixed
 template <size_t Size, template <typename> typename TaskQueue = details::deque,
           template <typename> typename Allocator = details::allocator>
-class ftpool_mv : private base_tpool_mv<ftpool<Size, TaskQueue>, Allocator>
+class fixed_mv : private base_tpool_mv<fixed<Size, TaskQueue>, Allocator>
 {
-    using this_t = ftpool_mv<Size, TaskQueue, Allocator>;
-    using base_t = base_tpool_mv<ftpool<Size, TaskQueue>, Allocator>;
+    using this_t = fixed_mv<Size, TaskQueue, Allocator>;
+    using base_t = base_tpool_mv<fixed<Size, TaskQueue>, Allocator>;
     using alloc_t = typename base_t::alloc_t;
     using impl_t = typename base_t::impl_t;
 

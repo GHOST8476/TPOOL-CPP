@@ -1,10 +1,10 @@
-#include <tutil/dtpool>
+#include <tutil/dynamic>
 #include <gtest/gtest.h>
 
 TEST(DynamicThreadPoolMovableTest, BasicTest)
 {
-    tutil::dtpool_mv<> movedtpool(5);
-    tutil::dtpool_mv<> tpool = std::move(movedtpool);
+    tutil::dynamic_mv<> movedynamic(5);
+    tutil::dynamic_mv<> tpool = std::move(movedynamic);
 
     ASSERT_EQ(tpool.size(), 5);
     ASSERT_EQ(tpool.pending_tasks(), 0);

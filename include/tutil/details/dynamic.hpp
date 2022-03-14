@@ -1,12 +1,13 @@
 #pragma once
 #include "tutil/details/worker.hpp"
+#include <vector>
 
 TUTIL_NAMESPACE_BEGIN_MAIN
 
 /// heap based thread pool - resizable
 /// tasks are evaluated based on their priority
 template <template <typename> typename TaskQueue = details::deque>
-class dtpool : private base_tpool<details::vector, TaskQueue>
+class dynamic : private base_tpool<details::vector, TaskQueue>
 {
     using base_t = base_tpool<details::vector, TaskQueue>;
     using worker_t = worker<TaskQueue>;
@@ -19,12 +20,12 @@ public:
     using err_handler_t = typename base_t::err_handler_t;
 
 public:
-    dtpool(size_t size = 0)
+    dynamic(size_t size = 0)
     {
         resize(size);
     }
 
-    ~dtpool()
+    ~dynamic()
     {
         resize(0);
     }
@@ -121,7 +122,7 @@ public:
             worker_.add([this, count]
                         {
                             for (size_t i = 0; i < count; i++)
-                                { this->threads_.emplace_back(&dtpool::tinit_, this); } });
+                                { this->threads_.emplace_back(&dynamic::tinit_, this); } });
 
             thread_count_ = size;
             return;
@@ -172,12 +173,12 @@ protected:
     worker_t worker_;
 };
 
-/// movable version of dtpool
+/// movable version of dynamic
 template <template <typename> typename TaskQueue = details::deque,
           template <typename> typename Allocator = details::allocator>
-class dtpool_mv : private base_tpool_mv<dtpool<TaskQueue>, Allocator>
+class dynamic_mv : private base_tpool_mv<dynamic<TaskQueue>, Allocator>
 {
-    using base_t = base_tpool_mv<dtpool<TaskQueue>, Allocator>;
+    using base_t = base_tpool_mv<dynamic<TaskQueue>, Allocator>;
 
 public:
     using task_t = typename base_t::task_t;
@@ -187,7 +188,7 @@ public:
     using err_handler_t = typename base_t::err_handler_t;
 
 public:
-    dtpool_mv(size_t size = 0) : base_t(size) {}
+    dynamic_mv(size_t size = 0) : base_t(size) {}
 
     size_t resize(size_t size) TUTIL_NOEXCEPT
     {

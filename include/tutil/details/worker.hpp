@@ -1,14 +1,14 @@
 #pragma once
-#include "tutil/details/ftpool.hpp"
+#include "tutil/details/fixed.hpp"
 
 TUTIL_NAMESPACE_BEGIN_MAIN
 
 /// reusable worker thread
 /// tasks are evaluated based on their priority
 template <template <typename> typename TaskQueue = details::deque>
-class worker : private ftpool<1, TaskQueue>
+class worker : private fixed<1, TaskQueue>
 {
-    using base_t = ftpool<1, TaskQueue>;
+    using base_t = fixed<1, TaskQueue>;
 
 public:
     using task_t = typename base_t::task_t;
@@ -36,9 +36,9 @@ public:
 /// movable version of worker
 template <template <typename> typename TaskQueue = details::deque,
           template <typename> typename Allocator = details::allocator>
-class worker_mv : private ftpool_mv<1, TaskQueue, Allocator>
+class worker_mv : private fixed_mv<1, TaskQueue, Allocator>
 {
-    using base_t = ftpool_mv<1, TaskQueue, Allocator>;
+    using base_t = fixed_mv<1, TaskQueue, Allocator>;
 
 public:
     using task_t = typename base_t::task_t;
