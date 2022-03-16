@@ -1,9 +1,9 @@
-#include <tutil/ftpool>
+#include <tpool/ftpool>
 #include <gtest/gtest.h>
 
 TEST(FixedThreadPoolTest, BasicTest)
 {
-    tutil::ftpool<5> tpool;
+    tpool::ftpool<5> tpool;
 
     ASSERT_EQ(tpool.size(), 5);
     ASSERT_EQ(tpool.pending_tasks(), 0);

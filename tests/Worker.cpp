@@ -1,10 +1,9 @@
-#include <tutil/worker>
+#include <tpool/worker>
 #include <gtest/gtest.h>
 
 TEST(WorkerTest, BasicTest)
 {
-    tutil::worker<> moved_worker;
-    tutil::worker<> worker;// = std::move(worker);
+    tpool::worker<> worker;
 
     ASSERT_EQ(worker.pending_tasks(), 0);
 

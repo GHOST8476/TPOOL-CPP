@@ -141,7 +141,7 @@ public:
         priority = other.priority;
         task = std::move(other.task);
 
-        return this;
+        return *this;
     }
 
     // to use as the underlying task

@@ -26,14 +26,6 @@ function(CreateTest TestName)
     add_test(NAME ${TestName} COMMAND ${TestName})
 endfunction(CreateTest)
 
-# Fixed Thread Pool Tests
 CreateTest(FixedThreadPool)
-CreateTest(FixedThreadPoolMovable)
-
-# Worker Tests
 CreateTest(Worker)
-CreateTest(WorkerMovable)
-
-# Dynamic Thread Pool Tests
 CreateTest(DynamicThreadPool)
-CreateTest(DynamicThreadPoolMovable)

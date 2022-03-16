@@ -1,6 +1,6 @@
 #pragma once
 
-#include "tutil/details/common.hpp"
+#include "tpool/details/common.hpp"
 #include <memory>
 #include <thread>
 #include <mutex>
@@ -168,9 +168,9 @@ inline auto base_tpool<ThreadContainer, TaskContainer>::add(priority_t priority,
             return std::future<return_t>();
         }
 
-        auto task_toadd = task_t(priority, [task]() mutable
+        auto task_toadd = task_t(priority, [task]()
                                  { task.value(); });
-        if (add_(std::move(task_toadd)))
+        if (!add_(std::move(task_toadd)))
         {
             invoke_err_handler_("failed adding task");
             return std::future<return_t>();
@@ -184,7 +184,7 @@ template <template <typename> typename ThreadContainer,
           template <typename> typename TaskContainer>
 inline bool base_tpool<ThreadContainer, TaskContainer>::add_(task_t task)
 {
-    tasks_.push_back(task);
+    tasks_.push_back(std::move(task));
     return true;
 }
 
