@@ -30,7 +30,7 @@ It is implemented using ftpool_mv of 1 size. Thus inherits all the capabilities 
 ### DynamicThreadPool (dtpool)
 Heap-based, resizable, non-movable thread pool. Tasks are evaluated based on their priority.
 
-Threads are allocated on the heap. Thread creation and desrtuction operations are asynchronous to avoid blocking the main the thread, but thread pool can be used with imidiate effect.
+Threads are allocated on the heap. Thread creation and destruction operations are asynchronous to avoid blocking the main the thread, but thread pool can be used with immediate effect.
 
 ### DynamicThreadPoolMovable (dtpool_mv)
 Movable version of DynamicThreadPool.
