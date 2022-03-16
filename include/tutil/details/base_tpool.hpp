@@ -22,14 +22,16 @@ class base_tpool
     using this_t = base_tpool<ThreadContainer, TaskContainer>;
 
     template <typename T>
+    using lambda_mover_t = details::lambda_mover<T>;
+    template <typename T>
     using thread_container_t = ThreadContainer<T>;
     template <typename T>
     using task_container_t = TaskContainer<T>;
 
 public:
-    using task_t = priority::task_t<std::function<void()>>;
+    using task_t = task_t<std::function<void()>>;
     using mutex_t = std::mutex;
-    using status_t = tpool_status::enum_t;
+    using status_t = status::enum_t;
     using priority_t = priority::base_t;
     using err_handler_t = std::function<void(const char *)>;
 
@@ -152,7 +154,7 @@ inline auto base_tpool<ThreadContainer, TaskContainer>::add(priority_t priority,
 {
     using return_t = typename std::result_of<Func(Args...)>::type;
 
-    auto task = details::mover<std::packaged_task<return_t()>>(
+    auto task = lambda_mover_t<std::packaged_task<return_t()>>(
         std::packaged_task<return_t()>(std::bind(
             std::forward<Func>(func), std::forward<Args>(args)...)));
 
