@@ -37,7 +37,7 @@ public:
     inline base_tpool() = default;
     inline virtual ~base_tpool() = default;
 
-    /// @brief adds the task to the queue to process,
+    /// @brief adds the task to the queue to process with default_priority,
     ///
     /// @details wraps the invokable using pacakaged_task,
     /// adds to the queue to process and
@@ -46,7 +46,8 @@ public:
     inline auto add(Func &&func, Args &&...args)
         -> std::future<typename std::result_of<Func(Args...)>::type>;
 
-    /// @brief adds the task to the queue to process,
+    /// @brief adds the task to the queue to process with priority,
+    /// tasks are evaluated based on their priority (behaviour can be overridden)
     ///
     /// @details wraps the invokable using pacakaged_task,
     /// adds to the queue to process and
@@ -69,20 +70,20 @@ public:
     inline void wait_until(const std::chrono::time_point<Clock, Duration> &time) const TUTIL_NOEXCEPT;
 
     /// pauses the tpool
-    /// consicutive calls will have no effect
+    /// consecutive calls will have no effect
     inline void pause() const TUTIL_NOEXCEPT;
 
     /// resumes the tpool
-    /// consicutive calls will have no effect
+    /// consecutive calls will have no effect
     inline void resume() const TUTIL_NOEXCEPT;
 
     /// status of tpool
     inline status_t status() const TUTIL_NOEXCEPT;
 
-    inline bool is_idle() const TUTIL_NOEXCEPT;
-    inline bool is_running() const TUTIL_NOEXCEPT;
-    inline bool is_paused() const TUTIL_NOEXCEPT;
-    inline bool is_closed() const TUTIL_NOEXCEPT;
+    inline bool is_idle() const TUTIL_NOEXCEPT;    /// status() == status_t::idle ?
+    inline bool is_running() const TUTIL_NOEXCEPT; /// status() == status_t::running ?
+    inline bool is_paused() const TUTIL_NOEXCEPT;  /// status() == status_t::paused ?
+    inline bool is_closed() const TUTIL_NOEXCEPT;  /// status() == status_t::closed ?
 
     /// thread count
     inline size_t size() const TUTIL_NOEXCEPT;
@@ -103,10 +104,24 @@ public:
     inline err_handler_t err_handler() const TUTIL_NOEXCEPT;
 
 protected:
+    /// passed to threads on creation, to keep threads working
     inline virtual void tinit_() = 0;
+
+    /// adds the task to the task container (tasks_)
+    /// @note task must be moved
+    /// @note mutex (task_mutex_) already locked
     inline virtual bool add_(task_t task);
+
+    /// removes the task from the task container (tasks_) and returns it
+    /// @note task must be moved
+    /// @note mutex (task_mutex_) already locked
     inline virtual task_t get_();
+
+    /// this call invokes the err handler (err_handler_)
     inline virtual void invoke_err_handler_(const char *msg) const;
+
+    /// function call to check if the tasks are completed
+    /// used by wait(), wait_for(), wait_until() and tinit_()
     inline bool waitfunc_() const TUTIL_NOEXCEPT;
 
 protected:
@@ -181,11 +196,11 @@ base_tpool<ThreadContainer, TaskContainer>::get_()
     return std::move(task);
 }
 
-// lock the task_mutex before calling this
 template <template <typename> typename ThreadContainer,
           template <typename> typename TaskContainer>
 inline bool base_tpool<ThreadContainer, TaskContainer>::waitfunc_() const TUTIL_NOEXCEPT
 {
+    // the task_mutex is already locked, no need to lock it here
     return tasks_.empty() && working_count_ == 0;
 }
 
@@ -332,210 +347,5 @@ inline void base_tpool<ThreadContainer, TaskContainer>::invoke_err_handler_(cons
         err_handler_(msg);
     }
 }
-
-/// movable version of base_tpool
-template <typename Impl, template <typename> typename Allocator = details::allocator>
-class base_tpool_mv
-{
-    using this_t = base_tpool_mv<Impl, Allocator>;
-
-protected:
-    using impl_t = Impl;
-    using alloc_t = Allocator<impl_t>;
-
-public:
-    using task_t = typename impl_t::task_t;
-    using mutex_t = typename impl_t::mutex_t;
-    using status_t = typename impl_t::status_t;
-    using priority_t = typename impl_t::priority_t;
-    using err_handler_t = typename impl_t::err_handler_t;
-
-public:
-    /// creates non resizable thread pool using stack memory
-    template <typename... Args>
-    base_tpool_mv(Args... args)
-    {
-        impl_t *pimpl_tmp = alloc_.allocate(1);
-        if (pimpl_tmp == nullptr)
-        {
-            // err_handler is not set yet,
-            // throw exceptions directly
-            throw std::bad_alloc();
-        }
-
-        new (pimpl_tmp) impl_t(std::forward<Args>(args)...);
-        pimpl_ = pimpl_tmp;
-    }
-
-    /// moves the tpool without blocking the thread
-    /// @note tpool must be of same size
-    template <template <typename> typename OtherAllocator>
-    base_tpool_mv(base_tpool_mv<Impl, OtherAllocator> &&other)
-        : pimpl_{other.pimpl_.exchange(nullptr)} {}
-
-    /// moves the tpool without blocking the thread
-    /// @note tpool must be of same size
-    template <template <typename> typename OtherAllocator>
-    this_t &operator=(base_tpool_mv<Impl, OtherAllocator> &&other)
-    {
-        pimpl_ = other.pimpl_.exchange(nullptr);
-        return *this;
-    }
-
-    /// completes all tasks and joins all threads
-    ~base_tpool_mv()
-    {
-        impl_t *pimpl_tmp = pimpl_;
-        if (pimpl_tmp != nullptr)
-        {
-            (*pimpl_tmp).~impl_t();
-            alloc_.deallocate(pimpl_tmp, 1);
-            pimpl_ = nullptr;
-        }
-    }
-
-    /// \brief adds the task to the queue to process,
-    ///
-    ///
-    /// wraps the invokable using pacakaged_task,
-    /// adds to the queue to process and
-    /// returns the future
-    template <typename Func, typename... Args>
-    auto add(Func &&func, Args &&...args)
-        -> decltype(std::declval<impl_t>().add(std::forward<Func>(func), std::forward<Args>(args)...))
-    {
-        return validate().add(std::forward<Func>(func), std::forward<Args>(args)...);
-    }
-
-    /// \brief adds the task to the queue to process,
-    ///
-    ///
-    /// wraps the invokable using pacakaged_task,
-    /// adds to the queue to process and
-    /// returns the future
-    template <typename Func, typename... Args>
-    auto add(priority_t priority, Func &&func, Args &&...args)
-        -> decltype(std::declval<impl_t>().add(priority, std::forward<Func>(func), std::forward<Args>(args)...))
-    {
-        return validate().add(priority, std::forward<Func>(func), std::forward<Args>(args)...);
-    }
-
-    /// wait for all tasks to complete
-    void wait() const TUTIL_NOEXCEPT
-    {
-        return validate().wait();
-    }
-
-    /// wait for all tasks to complete if completed within the given time interval
-    /// no effect of time interval is 0
-    template <typename Rep, typename Period>
-    void wait_for(const std::chrono::duration<Rep, Period> &time) const TUTIL_NOEXCEPT
-    {
-        return validate().wait_for(time);
-    }
-
-    /// wait for all tasks to complete if completed before the given time
-    /// no effect of time is now() or past now()
-    template <typename Clock, typename Duration>
-    void wait_until(const std::chrono::time_point<Clock, Duration> &time) const TUTIL_NOEXCEPT
-    {
-        return validate().wait_until(time);
-    }
-
-    /// pauses the tpool
-    /// consicutive calls will have no effect
-    void pause() const TUTIL_NOEXCEPT
-    {
-        return validate().pause();
-    }
-
-    /// resumes the tpool
-    /// consicutive calls will have no effect
-    void resume() const TUTIL_NOEXCEPT
-    {
-        return validate().resume();
-    }
-
-    /// status of tpool
-    status_t status() const TUTIL_NOEXCEPT
-    {
-        return validate().status();
-    }
-
-    bool is_idle() const TUTIL_NOEXCEPT
-    {
-        return validate().is_idle();
-    }
-
-    bool is_running() const TUTIL_NOEXCEPT
-    {
-        return validate().is_running();
-    }
-
-    bool is_paused() const TUTIL_NOEXCEPT
-    {
-        return validate().is_paused();
-    }
-
-    bool is_closed() const TUTIL_NOEXCEPT
-    {
-        return validate().is_closed();
-    }
-
-    /// thread count
-    size_t size() const TUTIL_NOEXCEPT
-    {
-        return validate().size();
-    }
-
-    /// thread count working on a task
-    size_t count_working() const TUTIL_NOEXCEPT
-    {
-        return validate().count_working();
-    }
-
-    /// idle thread count
-    size_t count_idle() const TUTIL_NOEXCEPT
-    {
-        return validate().count_idle();
-    }
-
-    /// count of pending tasks
-    size_t pending_tasks() const TUTIL_NOEXCEPT
-    {
-        return validate().pending_tasks();
-    }
-
-    /// set err_handler - thread safe
-    void err_handler(err_handler_t err_handler_in) TUTIL_NOEXCEPT
-    {
-        return validate().err_handler();
-    }
-
-    /// get err_handler - thread safe
-    err_handler_t err_handler() const TUTIL_NOEXCEPT
-    {
-        return validate().err_handler();
-    }
-
-protected:
-    impl_t &validate() const
-    {
-        impl_t *ptr = pimpl_;
-        if (ptr == nullptr)
-        {
-            throw std::runtime_error("tpool is closed");
-        }
-
-        return *ptr;
-    }
-
-protected:
-    // data is alloacted on heap to keep the tpool movable
-    // atomic to keep move opertations thread safe
-    alloc_t alloc_;
-    std::atomic<impl_t *> pimpl_;
-    // impl_t *pimpl_;
-};
 
 TUTIL_NAMESPACE_END_MAIN

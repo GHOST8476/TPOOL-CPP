@@ -101,7 +101,7 @@ namespace tpool_status
     };
 
     constexpr std::array<const char *, 4> strings = {"idle", "running", "paused", "closed"};
-    const char *tostr(enum_t value)
+    constexpr const char *tostr(enum_t value) TUTIL_NOEXCEPT
     {
         return strings[value];
     }

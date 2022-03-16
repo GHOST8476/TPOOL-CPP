@@ -1,12 +1,12 @@
-#include <tutil/fixed>
+#include <tutil/ftpool>
 #include <gtest/gtest.h>
 
 TEST(FixedThreadPoolMovableTest, BasicTest)
 {
     std::cout << std::endl;
 
-    tutil::fixed_mv<5> movedynamic;
-    tutil::fixed_mv<5> tpool = std::move(movedynamic);
+    tutil::ftpool_mv<5> movedtpool;
+    tutil::ftpool_mv<5> tpool = std::move(movedtpool);
 
     ASSERT_EQ(tpool.size(), 5);
     ASSERT_EQ(tpool.pending_tasks(), 0);

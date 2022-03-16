@@ -1,9 +1,9 @@
-#include <tutil/dynamic>
+#include <tutil/dtpool>
 #include <gtest/gtest.h>
 
 TEST(DynamicThreadPoolTest, BasicTest)
 {
-    tutil::dynamic<> tpool;
+    tutil::dtpool<> tpool;
 
     // ASSERT_EQ(tpool.size(), 5);
     // ASSERT_EQ(tpool.pending_tasks(), 0);

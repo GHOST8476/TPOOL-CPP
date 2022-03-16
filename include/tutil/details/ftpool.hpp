@@ -1,13 +1,11 @@
 #pragma once
 #include "tutil/details/base_tpool.hpp"
-#include <array>
 
 TUTIL_NAMESPACE_BEGIN_MAIN
 
-/// stack based thread pool - non-resizable
-/// tasks are evaluated based on their priority
+/// [stack-allocated] [non-resizable] [non-movable] thread pool
 template <size_t Size, template <typename> typename TaskQueue = details::deque>
-class fixed : private base_tpool<details::array<Size>::type, TaskQueue>
+class ftpool : private base_tpool<details::array<Size>::type, TaskQueue>
 {
     using base_t = base_tpool<details::array<Size>::type, TaskQueue>;
 
@@ -19,15 +17,15 @@ public:
     using err_handler_t = typename base_t::err_handler_t;
 
 public:
-    fixed()
+    ftpool()
     {
         for (auto &thread : threads_)
         {
-            thread = std::thread{&fixed::tinit_, this};
+            thread = std::thread{&ftpool::tinit_, this};
         }
     }
 
-    virtual ~fixed()
+    ~ftpool()
     {
         {
             std::lock_guard<mutex_t> lock(task_mutex_);
@@ -41,6 +39,29 @@ public:
         }
     }
 
+    using base_t::add;
+    using base_t::count_idle;
+    using base_t::count_working;
+    using base_t::err_handler;
+    using base_t::is_closed;
+    using base_t::is_idle;
+    using base_t::is_paused;
+    using base_t::is_running;
+    using base_t::pause;
+    using base_t::pending_tasks;
+    using base_t::resume;
+    using base_t::size;
+    using base_t::status;
+    using base_t::wait;
+    using base_t::wait_for;
+    using base_t::wait_until;
+
+protected:
+    using base_t::add_;
+    using base_t::get_;
+    using base_t::invoke_err_handler_;
+
+private:
     void tinit_() override
     {
         while (true)
@@ -89,59 +110,6 @@ public:
             }
         }
     }
-
-    using base_t::add;
-    using base_t::count_idle;
-    using base_t::count_working;
-    using base_t::err_handler;
-    using base_t::is_closed;
-    using base_t::is_idle;
-    using base_t::is_paused;
-    using base_t::is_running;
-    using base_t::pause;
-    using base_t::pending_tasks;
-    using base_t::resume;
-    using base_t::size;
-    using base_t::status;
-    using base_t::wait;
-    using base_t::wait_for;
-    using base_t::wait_until;
-};
-
-/// movable version of fixed
-template <size_t Size, template <typename> typename TaskQueue = details::deque,
-          template <typename> typename Allocator = details::allocator>
-class fixed_mv : private base_tpool_mv<fixed<Size, TaskQueue>, Allocator>
-{
-    using this_t = fixed_mv<Size, TaskQueue, Allocator>;
-    using base_t = base_tpool_mv<fixed<Size, TaskQueue>, Allocator>;
-    using alloc_t = typename base_t::alloc_t;
-    using impl_t = typename base_t::impl_t;
-
-public:
-    using task_t = typename impl_t::task_t;
-    using mutex_t = typename impl_t::mutex_t;
-    using status_t = typename impl_t::status_t;
-    using priority_t = typename impl_t::priority_t;
-    using err_handler_t = typename impl_t::err_handler_t;
-
-public:
-    using base_t::add;
-    using base_t::count_idle;
-    using base_t::count_working;
-    using base_t::err_handler;
-    using base_t::is_closed;
-    using base_t::is_idle;
-    using base_t::is_paused;
-    using base_t::is_running;
-    using base_t::pause;
-    using base_t::pending_tasks;
-    using base_t::resume;
-    using base_t::size;
-    using base_t::status;
-    using base_t::wait;
-    using base_t::wait_for;
-    using base_t::wait_until;
 };
 
 TUTIL_NAMESPACE_END_MAIN
